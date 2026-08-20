@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>Тёмный План</title>
+<meta name="theme-color" content="#0a0a0a" />
+<meta name="description" content="Задачи, таймеры, календарь и статистика в тёмной теме" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Тёмный План" />
+<style>
+  :root{
+    --bg: #0a0a0a;
+    --bg-elev: #141414;
+    --card: #17171a;
+    --card-2: #1d1d21;
+    --line: #2a2a2e;
+    --gold: #e8a83c;
+    --gold-dim: #a87d2e;
+    --text: #f0ede6;
+    --text-dim: #8d8a86;
+    --text-faint: #55534f;
+    --danger: #c1543f;
+    --ok: #7fae6c;
+    --radius: 16px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overscroll-behavior-y: none;
+    user-select:none;
+  }
+  input, textarea{ user-select:text; }
+  #app{
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    background:
+      radial-gradient(120% 60% at 50% -10%, rgba(232,168,60,0.06), transparent 60%),
+      var(--bg);
+  }
+  header.top{
+    padding: calc(14px + var(--safe-top)) 20px 14px;
+    display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:5;
+    background: linear-gradient(180deg, var(--bg) 70%, transparent);
+  }
+  header.top h1{
+    font-size: 15px; letter-spacing: 2.5px; font-weight:700; margin:0;
+    color: var(--text); text-transform:uppercase;
+  }
+  .icon-btn{
+    width:36px; height:36px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background: var(--card); border:1px solid var(--line);
+    color: var(--text); cursor:pointer;
+  }
+  .icon-btn svg{ width:17px; height:17px; }
+
+  main{ flex:1; overflow-y:auto; padding: 0 20px 110px; -webkit-overflow-scrolling: touch; }
+  main.no-scroll-fix{padding-bottom:110px;}
+
+  /* Tabs (segmented) */
+  .segmented{
+    display:flex; gap:6px; background: var(--card);
+    border:1px solid var(--line); border-radius:12px; padding:4px; margin: 6px 0 18px;
+  }
+  .segmented button{
+    flex:1; padding:9px 4px; border:none; border-radius:9px; background:transparent;
+    color: var(--text-dim); font-size:12px; font-weight:600; letter-spacing:0.4px;
+    cursor:pointer; text-transform:uppercase;
+  }
+  .segmented button.active{ background: var(--gold); color:#181205; }
+
+  .section-title{
+    display:flex; justify-content:space-between; align-items:baseline;
+    color: var(--text-dim); font-size:12px; letter-spacing:1.5px; text-transform:uppercase;
+    margin: 18px 0 10px;
+  }
+  .section-title span.count{ color: var(--text-faint); }
+
+  .task-card{
+    display:flex; align-items:center; gap:12px;
+    background: var(--card); border:1px solid var(--line); border-radius: var(--radius);
+    padding: 14px; margin-bottom:10px; cursor:pointer;
+  }
+  .checkbox{
+    width:22px; height:22px; border-radius:7px; border:1.5px solid var(--gold-dim);
+    flex-shrink:0; display:flex; align-items:center; justify-content:center; background:transparent;
+  }
+  .checkbox.checked{ background: var(--gold); border-color: var(--gold); }
+  .checkbox svg{ width:13px; height:13px; opacity:0; }
+  .checkbox.checked svg{ opacity:1; }
+  .task-info{ flex:1; min-width:0; }
+  .task-info .t{ font-size:14.5px; font-weight:600; margin-bottom:3px; }
+  .task-card.done .task-info .t{ color: var(--text-faint); text-decoration: line-through; }
+  .task-info .m{ font-size:12px; color: var(--text-dim); display:flex; gap:6px; align-items:center; }
+  .prio-bat{ width:16px; height:16px; flex-shrink:0; opacity:0.9; }
+  .empty{
+    text-align:center; padding: 50px 20px; color: var(--text-faint); font-size:13px; line-height:1.6;
+  }
+  .empty svg{ width:46px; height:46px; margin-bottom:14px; opacity:0.5; }
+
+  .fab{
+    position:absolute; right:20px; bottom: calc(84px + var(--safe-bottom));
+    width:54px; height:54px; border-radius:50%;
+    background: var(--gold); color:#181205; border:none;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 8px 22px rgba(232,168,60,0.35);
+    cursor:pointer; z-index:6;
+  }
+  .fab svg{ width:24px; height:24px; }
+
+  nav.bottom{
+    position:sticky; bottom:0; z-index:5;
+    display:flex; justify-content:space-around; align-items:center;
+    padding: 10px 10px calc(10px + var(--safe-bottom));
+    background: rgba(10,10,10,0.92); backdrop-filter: blur(10px);
+    border-top:1px solid var(--line);
+  }
+  nav.bottom button{
+    background:none; border:none; color: var(--text-faint);
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    padding:6px 10px; cursor:pointer;
+  }
+  nav.bottom button svg{ width:21px; height:21px; }
+  nav.bottom button.active{ color: var(--gold); }
+  nav.bottom button span{ font-size:9.5px; letter-spacing:0.3px; }
+
+  /* Screen management */
+  .screen{ display:none; }
+  .screen.active{ display:block; animation: fadein .18s ease; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+  /* Form elements */
+  .field{ margin-bottom:16px; }
+  .field label{ display:block; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color: var(--text-dim); margin-bottom:8px; }
+  .field input[type=text], .field textarea, .field select{
+    width:100%; background: var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:13px 14px; color: var(--text); font-size:14.5px; font-family:inherit;
+  }
+  .field textarea{ min-height:80px; resize:vertical; }
+  .row-btn{
+    width:100%; display:flex; align-items:center; gap:10px; justify-content:flex-start;
+    background: var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:13px 14px; color: var(--text); font-size:14px; cursor:pointer; margin-bottom:10px;
+  }
+  .row-btn svg{ width:17px; height:17px; color: var(--gold); flex-shrink:0; }
+  .row-btn .sub{ margin-left:auto; color: var(--text-dim); font-size:13px; }
+
+  .prio-grid{ display:flex; gap:10px; }
+  .prio-opt{
+    flex:1; aspect-ratio:1; border-radius:12px; background: var(--card);
+    border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .prio-opt.selected{ border-color: var(--gold); background: rgba(232,168,60,0.08); }
+  .prio-opt svg{ width:22px; height:22px; }
+
+  .cat-grid{ display:flex; flex-wrap:wrap; gap:8px; }
+  .cat-chip{
+    padding:9px 14px; border-radius:20px; background: var(--card); border:1.5px solid var(--line);
+    color: var(--text-dim); font-size:12.5px; cursor:pointer;
+  }
+  .cat-chip.selected{ border-color: var(--gold); color: var(--gold); background: rgba(232,168,60,0.08); }
+
+  .btn-primary{
+    width:100%; padding:15px; border:none; border-radius:12px; background: var(--gold);
+    color:#181205; font-weight:700; font-size:13.5px; letter-spacing:1.2px; text-transform:uppercase;
+    cursor:pointer; margin-top:6px;
+  }
+  .btn-danger{
+    width:100%; padding:15px; border:1.5px solid var(--danger); border-radius:12px; background:transparent;
+    color: var(--danger); font-weight:700; font-size:13.5px; letter-spacing:1px; text-transform:uppercase;
+    cursor:pointer; margin-top:10px;
+  }
+  .btn-ghost{
+    width:100%; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--card);
+    color: var(--text-dim); font-weight:600; font-size:13px; letter-spacing:0.5px;
+    cursor:pointer; margin-top:10px;
+  }
+
+  /* Modal / sheet */
+  .overlay{
+    position:absolute; inset:0; background: rgba(0,0,0,0.6); z-index:20; display:none;
+  }
+  .overlay.active{ display:block; }
+  .sheet{
+    position:absolute; left:0; right:0; bottom:0; z-index:21;
+    background: var(--bg-elev); border-radius: 20px 20px 0 0; border:1px solid var(--line); border-bottom:none;
+    max-height: 88%; overflow-y:auto; padding: 18px 20px calc(24px + var(--safe-bottom));
+    transform: translateY(100%); transition: transform .22s ease;
+  }
+  .sheet.active{ transform: translateY(0); }
+  .sheet .handle{ width:36px; height:4px; border-radius:2px; background: var(--line); margin: 0 auto 16px; }
+  .sheet h2{ font-size:14px; letter-spacing:1.5px; text-transform:uppercase; margin: 0 0 18px; }
+
+  /* Full screen (create task) */
+  .full-screen{
+    position:absolute; inset:0; background: var(--bg); z-index:15; display:none;
+    flex-direction:column; overflow-y:auto;
+  }
+  .full-screen.active{ display:flex; }
+  .full-screen .fs-header{
+    display:flex; align-items:center; gap:14px; padding: calc(14px + var(--safe-top)) 20px 14px;
+    position:sticky; top:0; background: var(--bg); z-index:2;
+  }
+  .full-screen .fs-header h2{ font-size:14px; letter-spacing:2px; text-transform:uppercase; margin:0; }
+  .full-screen .fs-body{ padding: 4px 20px 40px; flex:1; }
+
+  /* Calendar */
+  .cal-head{ display:flex; align-items:center; justify-content:space-between; margin:6px 0 14px; }
+  .cal-head .m-label{ font-size:14px; font-weight:700; letter-spacing:0.5px; }
+  .cal-nav{ display:flex; gap:8px; }
+  .cal-grid{ display:grid; grid-template-columns: repeat(7,1fr); gap:4px; text-align:center; }
+  .cal-grid .dow{ font-size:10px; color: var(--text-faint); padding-bottom:8px; letter-spacing:1px; }
+  .cal-day{
+    aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border-radius:10px; font-size:12.5px; color: var(--text-dim); cursor:pointer; position:relative; gap:3px;
+  }
+  .cal-day.other{ color: var(--text-faint); opacity:0.4; }
+  .cal-day.today{ color: var(--gold); font-weight:700; }
+  .cal-day.selected{ background: var(--gold); color:#181205; font-weight:700; }
+  .cal-day .dot{ width:4px; height:4px; border-radius:50%; background: var(--gold-dim); }
+  .cal-day.selected .dot{ background:#181205; }
+  .day-list{ margin-top: 22px; }
+  .day-list h3{ font-size:12.5px; color: var(--text-dim); letter-spacing:0.5px; margin-bottom:10px; }
+
+  /* Timer */
+  .timer-wrap{ display:flex; flex-direction:column; align-items:center; padding-top:20px; }
+  .timer-ring{ position:relative; width:230px; height:230px; margin: 10px 0 26px; }
+  .timer-ring svg{ transform: rotate(-90deg); }
+  .timer-center{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .timer-center .label{ font-size:10.5px; letter-spacing:2px; color: var(--text-dim); text-transform:uppercase; margin-bottom:8px; }
+  .timer-center .time{ font-size:34px; font-weight:700; letter-spacing:1px; font-variant-numeric: tabular-nums; }
+  .timer-units{ display:flex; gap:26px; margin-bottom:6px; }
+  .timer-units div{ text-align:center; font-size:9.5px; color: var(--text-faint); letter-spacing:1px; text-transform:uppercase; }
+  .timer-task{ font-size:14px; color: var(--text-dim); margin-bottom:24px; text-align:center; padding:0 20px;}
+  .timer-controls{ display:flex; gap:20px; align-items:center; }
+  .tc-btn{
+    width:56px; height:56px; border-radius:50%; border:1px solid var(--line); background: var(--card);
+    color: var(--text); display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .tc-btn.primary{ width:68px; height:68px; background: var(--gold); color:#181205; border:none; }
+  .tc-btn svg{ width:22px; height:22px; }
+  .tc-btn.primary svg{ width:26px; height:26px; }
+  .timer-empty{ text-align:center; color: var(--text-faint); font-size:13px; padding: 60px 30px; line-height:1.7; }
+  .task-pick{ margin-top:18px; width:100%; }
+  .task-pick .row-btn{ margin-bottom:8px; }
+
+  /* Stats */
+  .stat-card{
+    background: var(--card); border:1px solid var(--line); border-radius: var(--radius); padding:18px; margin-bottom:18px;
+  }
+  .stat-card .lbl{ font-size:11px; letter-spacing:1px; text-transform:uppercase; color: var(--text-dim); margin-bottom:6px; }
+  .stat-card .big{ font-size:34px; font-weight:700; }
+  .stat-card .delta{ font-size:12px; color: var(--ok); margin-top:4px; }
+  .bar-row{ display:flex; align-items:flex-end; gap:8px; height:70px; margin-top:16px; }
+  .bar-row .bar{ flex:1; background: var(--line); border-radius:4px 4px 0 0; position:relative; display:flex; align-items:flex-end;}
+  .bar-row .bar b{ display:block; width:100%; background: var(--gold-dim); border-radius:4px 4px 0 0; }
+  .bar-row .bar.today b{ background: var(--gold); }
+  .bar-labels{ display:flex; gap:8px; margin-top:6px; }
+  .bar-labels span{ flex:1; text-align:center; font-size:9.5px; color: var(--text-faint); }
+  .cat-row{ margin-bottom:14px; }
+  .cat-row .cr-top{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px; }
+  .cat-row .cr-top .pct{ color: var(--text-dim); }
+  .cat-bar-bg{ height:6px; border-radius:4px; background: var(--line); overflow:hidden; }
+  .cat-bar-bg > div{ height:100%; background: var(--gold); border-radius:4px; }
+
+  /* Settings */
+  .set-group{ background: var(--card); border:1px solid var(--line); border-radius: var(--radius); overflow:hidden; margin-bottom:16px; }
+  .set-row{ display:flex; align-items:center; gap:12px; padding:15px 16px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .set-row:last-child{ border-bottom:none; }
+  .set-row svg{ width:18px; height:18px; color: var(--gold); flex-shrink:0; }
+  .set-row .lab{ flex:1; font-size:14px; }
+  .set-row .val{ color: var(--text-dim); font-size:13px; }
+  .switch{ width:42px; height:24px; border-radius:14px; background: var(--line); position:relative; flex-shrink:0; }
+  .switch.on{ background: var(--gold); }
+  .switch i{ position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#0a0a0a; transition: left .15s; }
+  .switch.on i{ left:21px; background:#181205; }
+  .profile-row{ display:flex; align-items:center; gap:14px; padding:18px 16px; }
+  .profile-row .av{ width:52px; height:52px; border-radius:50%; background: rgba(232,168,60,0.12); display:flex; align-items:center; justify-content:center; }
+  .profile-row .av svg{ width:26px; height:26px; color: var(--gold); }
+  .profile-row .nm{ font-size:15px; font-weight:700; }
+  .profile-row .sub{ font-size:12px; color: var(--text-dim); margin-top:2px; }
+
+  .toast{
+    position:absolute; left:50%; bottom: calc(96px + var(--safe-bottom)); transform: translateX(-50%);
+    background: #232323; border:1px solid var(--line); color: var(--text); padding:11px 18px;
+    border-radius:10px; font-size:13px; z-index:30; opacity:0; pointer-events:none; transition: opacity .2s, transform .2s;
+    white-space:nowrap;
+  }
+  .toast.show{ opacity:1; transform: translateX(-50%) translateY(-4px); }
+
+  ::-webkit-scrollbar{ display:none; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== TASKS SCREEN ===== -->
+  <div class="screen active" id="screen-tasks">
+    <header class="top">
+      <h1>Задачи</h1>
+      <div class="icon-btn" onclick="App.confirmReset()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><circle cx="19" cy="17" r="2"/></svg>
+      </div>
+    </header>
+    <main>
+      <div class="segmented" id="task-tabs">
+        <button data-tab="all" class="active">Все</button>
+        <button data-tab="today">Сегодня</button>
+        <button data-tab="upcoming">Далее</button>
+        <button data-tab="done">Готово</button>
+      </div>
+      <div id="task-list"></div>
+    </main>
+    <button class="fab" onclick="App.openNewTask()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </div>
+
+  <!-- ===== CALENDAR SCREEN ===== -->
+  <div class="screen" id="screen-calendar">
+    <header class="top"><h1>Календарь</h1><div style="width:36px"></div></header>
+    <main>
+      <div class="cal-head">
+        <div class="cal-nav"><div class="icon-btn" onclick="App.calShift(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div></div>
+        <div class="m-label" id="cal-month-label"></div>
+        <div class="cal-nav"><div class="icon-btn" onclick="App.calShift(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div></div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="day-list">
+        <h3 id="day-list-label">—</h3>
+        <div id="day-list-items"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ===== TIMER SCREEN ===== -->
+  <div class="screen" id="screen-timer">
+    <header class="top"><h1>Таймер</h1><div style="width:36px"></div></header>
+    <main id="timer-main"></main>
+  </div>
+
+  <!-- ===== STATS SCREEN ===== -->
+  <div class="screen" id="screen-stats">
+    <header class="top"><h1>Статистика</h1><div style="width:36px"></div></header>
+    <main>
+      <div class="segmented" id="stats-tabs">
+        <button data-tab="week" class="active">Неделя</button>
+        <button data-tab="month">Месяц</button>
+        <button data-tab="all">Всё время</button>
+      </div>
+      <div id="stats-body"></div>
+    </main>
+  </div>
+
+  <!-- ===== SETTINGS SCREEN ===== -->
+  <div class="screen" id="screen-settings">
+    <header class="top"><h1>Настройки</h1><div style="width:36px"></div></header>
+    <main id="settings-body"></main>
+  </div>
+
+  <!-- ===== BOTTOM NAV ===== -->
+  <nav class="bottom">
+    <button data-screen="tasks" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 10l2 2 4-4"/></svg>
+      <span>Задачи</span>
+    </button>
+    <button data-screen="calendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      <span>Календарь</span>
+    </button>
+    <button data-screen="timer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>
+      <span>Таймер</span>
+    </button>
+    <button data-screen="stats">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
+      <span>Статистика</span>
+    </button>
+    <button data-screen="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1-1.55 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.55-1H3a2 2 0 110-4h.09a1.7 1.7 0 001.55-1 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001-1.55V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V9a1.7 1.7 0 001.55 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.55 1z"/></svg>
+      <span>Настройки</span>
+    </button>
+  </nav>
+
+  <!-- ===== NEW TASK FULL SCREEN ===== -->
+  <div class="full-screen" id="fs-newtask">
+    <div class="fs-header">
+      <div class="icon-btn" onclick="App.closeNewTask()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <h2 id="newtask-title">Новая задача</h2>
+    </div>
+    <div class="fs-body">
+      <div class="field">
+        <input type="text" id="nt-name" placeholder="Название задачи" maxlength="80" />
+      </div>
+      <div class="field">
+        <label>Время / дата</label>
+        <div class="row-btn" onclick="App.openDatePick()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+          <span id="nt-date-label">Указать дату</span>
+          <span class="sub">›</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Приоритет</label>
+        <div class="prio-grid" id="nt-prio"></div>
+      </div>
+      <div class="field">
+        <label>Категория</label>
+        <div class="cat-grid" id="nt-cat"></div>
+      </div>
+      <div class="field">
+        <label>Заметки</label>
+        <textarea id="nt-notes" placeholder="Дополнительные детали..."></textarea>
+      </div>
+      <button class="btn-primary" onclick="App.saveTask()">Сохранить</button>
+      <button class="btn-danger" id="nt-delete" style="display:none" onclick="App.deleteCurrentTask()">Удалить задачу</button>
+    </div>
+  </div>
+
+  <!-- ===== DATE PICKER SHEET ===== -->
+  <div class="overlay" id="dp-overlay" onclick="App.closeDatePick()"></div>
+  <div class="sheet" id="dp-sheet">
+    <div class="handle"></div>
+    <h2>Выбор даты</h2>
+    <div class="segmented" id="dp-tabs">
+      <button data-tab="cal" class="active">Календарь</button>
+      <button data-tab="rel">Интервал</button>
+    </div>
+    <div id="dp-cal-body"></div>
+    <div id="dp-rel-body" style="display:none">
+      <div class="row-btn" data-min="30" onclick="App.pickRelative(30, event)">Через 30 минут</div>
+      <div class="row-btn" data-min="60" onclick="App.pickRelative(60, event)">Через 1 час</div>
+      <div class="row-btn" data-min="1440" onclick="App.pickRelative(1440, event)">Через 1 день</div>
+      <div class="row-btn" data-min="10080" onclick="App.pickRelative(10080, event)">Через 1 неделю</div>
+      <div class="row-btn" data-min="43200" onclick="App.pickRelative(43200, event)">Через 1 месяц</div>
+    </div>
+    <button class="btn-primary" onclick="App.confirmDatePick()">Подтвердить</button>
+  </div>
+
+  <!-- ===== TASK DETAIL SHEET ===== -->
+  <div class="overlay" id="td-overlay" onclick="App.closeTaskDetail()"></div>
+  <div class="sheet" id="td-sheet"></div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
